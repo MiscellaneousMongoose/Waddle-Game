@@ -1,2 +1,2 @@
 # Waddle-Game
-Waddle Game
+I wanted to create a game simmilar to one I played as a little one so I could later write code for a nueral network to learn how to play it. I'm using Python 3.10.11 which depending on what version of python you are using may change things a little bit due to floor division. If I haven't yet optimized the code for speed  by reducing calculations I'll get to it soon. I hope you enjoy!
