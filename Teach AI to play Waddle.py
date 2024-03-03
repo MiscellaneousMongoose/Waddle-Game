@@ -408,52 +408,6 @@ def adjust_plat_loc(x, y):
     new_vec = (x+0.25*platform_dimensions[0], y+0.25*platform_dimensions[1])
     return new_vec
 
-def find_trap_points(cordinate_2_base, trap_percieved_base, cordinate_2_width, trap_percieved_width, index):
-    # The quadrant system and point system in use:
-    #    \ 3 /
-    #     \ /       
-    #   4  x  2     P3---P4
-    #     / \      /       \
-    #    / 1 \   P2---------P1
-    quadrant = existing_holes[index].quadrant
-    if quadrant == 1:        
-        point_1 = ((cordinate_2_base[0]  + 0.5*trap_percieved_base) + (0.5*screen_width),  (-cordinate_2_base[1] + (0.5*screen_width)))
-        point_2 = ((cordinate_2_base[0]  - 0.5*trap_percieved_base) + (0.5*screen_width),  (-cordinate_2_base[1] + (0.5*screen_width)))    
-        point_3 = ((cordinate_2_width[0] - 0.5*trap_percieved_width) + (0.5*screen_width), (-cordinate_2_width[1] + (0.5*screen_width)))
-        point_4 = ((cordinate_2_width[0] + 0.5*trap_percieved_width) + (0.5*screen_width), (-cordinate_2_width[1] + (0.5*screen_width)))
-        #print("The previous cordinates of the hole were: P1=", existing_holes[index].point_1,", P2=", existing_holes[index].point_2, ", P3=", existing_holes[index].point_3, ", P4=", existing_holes[index].point_4, " in quadrant ", quadrant)
-        #print("  The updated cordinates of the hole are: P1=", point_1, ", P2=", point_2, ", P3=", point_3, ", P4=", point_4)
-        if (-cordinate_2_width[1]) <= hole_dissapear:
-                point_1, point_2, point_3, point_4 = (), (), (), ()
-                existing_holes[index].too_far = True  #Hole will be deleted soon
-    if quadrant == 2:                    
-        point_1 = ((cordinate_2_base[0] + (0.5*screen_width)) ,  (-cordinate_2_base[1]  - 0.5*trap_percieved_base) + (0.5*screen_width)) 
-        point_2 = ((cordinate_2_base[0] + (0.5*screen_width)) ,  (-cordinate_2_base[1]  + 0.5*trap_percieved_base) + (0.5*screen_width)) 
-        point_3 = ((cordinate_2_width[0] + (0.5*screen_width)) ,  (-cordinate_2_width[1] + 0.5*trap_percieved_width) + (0.5*screen_width))
-        point_4 = ((cordinate_2_width[0] + (0.5*screen_width)) ,  (-cordinate_2_width[1] - 0.5*trap_percieved_width) + (0.5*screen_width))
-        if (cordinate_2_width[0]) <= hole_dissapear:
-            point_1, point_2, point_3, point_4 = (), (), (), ()
-            existing_holes[index].too_far = True  #Hole will be deleted soon                  
-    elif quadrant == 3:
-        point_1 = ((cordinate_2_base[0]  - 0.5*trap_percieved_base) + (0.5*screen_width),   (-cordinate_2_base[1] + (0.5*screen_width)))
-        point_2 = ((cordinate_2_base[0]  + 0.5*trap_percieved_base) + (0.5*screen_width),   (-cordinate_2_base[1] + (0.5*screen_width)))                    
-        point_3 = ((cordinate_2_width[0] + 0.5*trap_percieved_width) + (0.5*screen_width),  (-cordinate_2_width[1] + (0.5*screen_width)))    
-        point_4 = ((cordinate_2_width[0] - 0.5*trap_percieved_width) + (0.5*screen_width),  (-cordinate_2_width[1] + (0.5*screen_width))) 
-        if (cordinate_2_width[1]) <= hole_dissapear:
-            point_1, point_2, point_3, point_4 = (), (), (), ()
-            existing_holes[index].too_far = True  #Hole will be deleted soon                   
-    elif quadrant == 4:          
-        point_1 = ((cordinate_2_base[0] + (0.5*screen_width)),  (-cordinate_2_base[1] + 0.5*trap_percieved_base) + (0.5*screen_width))
-        point_2 = ((cordinate_2_base[0] + (0.5*screen_width)),  (-cordinate_2_base[1] - 0.5*trap_percieved_base) + (0.5*screen_width))
-        point_3 = ((cordinate_2_width[0] + (0.5*screen_width)),  (-cordinate_2_width[1]  - 0.5*trap_percieved_width) + (0.5*screen_width))    
-        point_4 = ((cordinate_2_width[0] + (0.5*screen_width)),  (-cordinate_2_width[1]  + 0.5*trap_percieved_width) + (0.5*screen_width))  
-        if (-cordinate_2_width[0]) <= hole_dissapear:
-                point_1, point_2, point_3, point_4 = (), (), (), ()
-                existing_holes[index].too_far = True  #Hole will be deleted soon
-    
-    return point_1, point_2, point_3, point_4
-
-
 def init_hole_distances():
     global hole_slots_cords   
     global hole_dissapear
