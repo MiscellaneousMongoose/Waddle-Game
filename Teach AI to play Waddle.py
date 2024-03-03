@@ -40,6 +40,9 @@ platform_theta = 0
 rotate_rate = 15 #When the platform rotates it's at this rate
 rotate_deg = 90 / rotate_rate
 
+
+hole_slots_cords = [[] for _ in range(16)]
+
 captions = ["Now let's Waddle!", "Keep up the good work!", "Lets go!", "You're doing just okay actually, not that impressive.", "Oh look at the big fella! lets see how you handle the hard levels.", "Maybe this game isn't actually that hard. Have you thoght of that? Don't get so full of yourself."]
 Levels = []
 
@@ -47,7 +50,7 @@ level_1 = [[False]*16 for _ in range(30)]
 for i in range(30):
     for j in range(16):
         if i == 2 or i == 8:
-            level_1[i][j] = True
+            level_1[i][j] = True     #level_1[hole_layer][hole_number]
 Levels.append(level_1)
 level_2 = [[False]*16 for _ in range(30)]
 for i in range(30):
@@ -64,6 +67,10 @@ for i in range(30):
         else:
             level_3[i][j] = True
 Levels.append(level_3)
+level_4= [[False]*16 for _ in range(30)]  #False means there is no hole
+level_4[0][1] = True   #True means there is a hole
+Levels.append(level_4)
+
 current_level = 1 #If =1, playing through level_1  
 
 #*************************************************************************************************************************************************************8
@@ -106,9 +113,7 @@ def remove_holes():
         print("A hole has been deleted!")
 
 class Hole(pygame.sprite.Sprite):
-    def __init__(self, hole_number): # point_1 and point_2 are the width while point_3 and point_4 are the base
-        self.too_far = False #if the hole is too far from the viewpoint it is deleted from the list of existing_holes
-        self.possible_danger = False
+    def __init__(self, hole_number): # point_1 and point_2 are the width while point_3 and point_4 are the base        
         if hole_number == 0:
             self.quadrant = 1
             self.point_1 = (0.125*screen_width + (0.5*screen_height)*(((0.75*screen_height))/(screen_width)), 1.25*screen_height)
@@ -164,10 +169,8 @@ class Hole(pygame.sprite.Sprite):
             self.point_4 = (screen_width, 0.5*screen_width)
             self.small_theta = my_degrees(math.atan( abs((0.5*screen_height)-((self.point_1[1]+self.point_2[1])/2)) / (0.5*screen_height) ))
             self.theta = my_degrees(-math.atan( abs((0.5*screen_height)-((self.point_1[1]+self.point_2[1])/2)) / (0.5*screen_height) ))
-            
-            
-        elif hole_number == 6:
-            
+
+        elif hole_number == 6:            
             self.quadrant = 2
             self.point_1 = (1.25*screen_height, 0.375*screen_height - (0.5*screen_height)*(((0.75*screen_height))/(screen_width)))
             self.point_2 = (1.25*screen_height, 0.375*screen_height + (0.5*screen_height)*(((0.75*screen_height))/(screen_width)))
@@ -175,8 +178,7 @@ class Hole(pygame.sprite.Sprite):
             self.point_4 = (screen_width, 0.25*screen_width)
             self.small_theta = my_degrees(math.atan( abs((0.5*screen_height)-((self.point_1[1]+self.point_2[1])/2)) / (0.5*screen_height) ))
             self.theta = self.small_theta
-            
-            
+
         elif hole_number == 7:            
             self.quadrant = 2
             self.point_1 = (1.25*screen_height, 0.125*screen_height - (0.5*screen_height)*(((0.75*screen_height))/(screen_width)))
@@ -185,8 +187,7 @@ class Hole(pygame.sprite.Sprite):
             self.point_4 = (screen_width, 0)
             self.small_theta = my_degrees(math.atan( abs((0.5*screen_height)-((self.point_1[1]+self.point_2[1])/2)) / (0.5*screen_height) ))
             self.theta = self.small_theta
-            
-            
+
         elif hole_number == 8:            
             self.quadrant = 3
             self.point_1 = (0.875*screen_width - (0.5*screen_height)*(((0.75*screen_height))/(screen_width)), -0.25*screen_height)
@@ -204,8 +205,7 @@ class Hole(pygame.sprite.Sprite):
             self.point_4 = (0.75*screen_width, 0)
             self.small_theta = my_degrees(math.atan( abs((0.5*screen_height)-((self.point_1[0]+self.point_2[0])/2)) / (0.5*screen_height) ))
             self.theta = 90 - self.small_theta
-            
-             
+
         elif hole_number == 10:            
             self.quadrant = 3
             self.point_1 = (0.375*screen_width - (0.5*screen_height)*(((0.75*screen_height))/(screen_width)), -0.25*screen_height)
@@ -259,6 +259,10 @@ class Hole(pygame.sprite.Sprite):
             self.point_4 = (0, screen_height)
             self.small_theta = my_degrees(math.atan( abs((0.5*screen_height)-((self.point_1[1]+self.point_2[1])/2)) / (0.5*screen_height) ))
             self.theta = 180 + self.small_theta
+        self.distance_iteration = 0
+        self.too_far = False #if the hole is too far from the viewpoint it is deleted from the list of existing_holes
+        self.possible_danger = False
+        self.losing_hole = False
         self.actual_x_dist = 0
         self.hole_number = hole_number
         self.H =  (0.5*screen_height)/math.cos(inverse_my_degrees(self.small_theta))  #This is the INITIAL distance of the midpoint of the trapezoid width to the midpoint of the screen
@@ -374,24 +378,22 @@ def plat_color():
 
 def move_holes(index, frame):
     global FPS
-    
+    global hole_slots_cords
     point_1, point_2, point_3, point_4 = (), (), (), ()
     if not rotating_platform: #check if platform is rotating to stop hole motion
-                  
+        point_1 = hole_slots_cords[existing_holes[index].hole_number][existing_holes[index].distance_iteration][0]
+        #print("Point 1 cordinates are ", point_1, " from quadrant ", existing_holes[index].quadrant)
+        point_2 = hole_slots_cords[existing_holes[index].hole_number][existing_holes[index].distance_iteration][1]
+        #print("Point 2 cordinates are ", point_2, " from quadrant ", existing_holes[index].quadrant)
+        point_3 = hole_slots_cords[existing_holes[index].hole_number][existing_holes[index].distance_iteration][2]
+        #print("Point 3 cordinates are ", point_3, " from quadrant ", existing_holes[index].quadrant)
+        point_4 = hole_slots_cords[existing_holes[index].hole_number][existing_holes[index].distance_iteration][3]
+        #print("Point 4 cordinates are ", point_4, " from quadrant ", existing_holes[index].quadrant)
+        #print()        
+        existing_holes[index].distance_iteration += 1
+        if existing_holes[index].distance_iteration == len(hole_slots_cords[existing_holes[index].hole_number]):
+            existing_holes[index].too_far = True
         
-        #print("From move_holes() the existing_holes[index].actual_x_dist before change is ", existing_holes[index].actual_x_dist)
-        existing_holes[index].actual_x_dist += hole_speed        
-        base_percieved_dist_2, cordinate_2_base = actual_p_to_viewed(True, existing_holes[index])   #Calculate base of trapezoid and distance from center of screen
-        width_percieved_dist_2, cordinate_2_width = actual_p_to_viewed(False, existing_holes[index])#Calculate width of trapezoid  and distance from center of screen
-        if existing_holes[index].quadrant == 1 or existing_holes[index].quadrant == 3:
-            trap_percieved_base = (0.25 * screen_width) * (abs(cordinate_2_base[1]) / (0.5*screen_width)) #control size of trapezoid base
-            trap_percieved_width = (0.25 * screen_width) * (abs(cordinate_2_width[1]) / (0.5*screen_width))  #control size of trapezoid width
-        else: #If quadrant is 2 or 4            
-            trap_percieved_base = (0.25 * screen_width) * (abs(cordinate_2_base[0]) / (0.5*screen_width)) #control size of trapezoid base 
-            trap_percieved_width = (0.25 * screen_width) * (abs(cordinate_2_width[0]) / (0.5*screen_width)) #control size of trapezoid width
-        point_1, point_2, point_3, point_4 = find_trap_points(cordinate_2_base, trap_percieved_base, cordinate_2_width, trap_percieved_width, index)
-        #if base_percieved_dist_2 < width_percieved_dist_2:
-        #    print("***The width is actualy pointing the wrong way for trapezoid in hole number ", existing_holes[index].hole_number, " ***")
         
     else:   
         point_1 = existing_holes[index].point_1
@@ -451,27 +453,82 @@ def find_trap_points(cordinate_2_base, trap_percieved_base, cordinate_2_width, t
     
     return point_1, point_2, point_3, point_4
 
-def actual_p_to_viewed(Base, hole):
-    if Base: #if calculating for the base
-        #print("(hole.small_theta) is ", (hole.small_theta))
-        #print("the height y is ", hole.H)
-        new_zeta = my_degrees(math.atan2(hole.actual_x_dist + (0.25*screen_width), hole.H)) #It is supposed to be atan2(actual_x_dist, y) because looking at the triangle actual_x_dist is opposite and y is the adjacent
-        #print("The new_zeta for the base is ", new_zeta)
-        viewed_dist_2 = (new_zeta*(math.pi*hole.H))/360
-        #print("The updated distance viewed for the base is ", viewed_dist_2)
-        cordinate_2 = ((hole.H-viewed_dist_2)*math.cos(inverse_my_degrees(hole.theta))), ((hole.H-viewed_dist_2)*(math.sin(inverse_my_degrees(hole.theta))))
-        #print("From actual_p_to_viewed() the resulting base midpoint cordinate is ", cordinate_2)
-        return viewed_dist_2, cordinate_2
-    else: #if calculating for width placement
-        #print("(hole.small_theta) is ", (hole.small_theta))
-        #print("the height y is ", hole.H)
-        new_zeta = my_degrees(math.atan2( (hole.actual_x_dist ), hole.H )) #It is supposed to be atan2(actual_x_dist, y) because looking at the triangle actual_x_dist is opposite and y is the adjacent
-        #print("The new_zeta for the width is ", new_zeta)
-        viewed_dist_2 = (new_zeta*(math.pi*hole.H))/360
-        #print("The updated distance viewed for the width is ", viewed_dist_2)
-        cordinate_2 = ((hole.H-viewed_dist_2)*math.cos(inverse_my_degrees(hole.theta))), ((hole.H-viewed_dist_2)*(math.sin(inverse_my_degrees(hole.theta))))
-        #print("From actual_p_to_viewed() the resulting width midpoint cordinate is ", cordinate_2)
-        return viewed_dist_2, cordinate_2
+
+def init_hole_distances():
+    global hole_slots_cords   
+    global hole_dissapear
+    global hole_speed
+    slots_width_mid_cord = [[] for _ in range(16)]
+    slots_base_mid_cord = [[] for _ in range(16)]
+       
+    start_time = time.time()
+    for hole_num in range(16):
+        hole = Hole(hole_num)   
+        move_hole_more = True     
+        while move_hole_more: 
+            new_zeta = my_degrees(math.atan2( (hole.actual_x_dist), hole.H )) 
+            viewed_dist_2 = (new_zeta*(math.pi*hole.H))/360
+            cordinate_2_width = ((hole.H-viewed_dist_2)*math.cos(inverse_my_degrees(hole.theta))), ((hole.H-viewed_dist_2)*(math.sin(inverse_my_degrees(hole.theta))))
+            slots_width_mid_cord[hole_num].append(cordinate_2_width)#The new cordinate for the width is inserted
+            new_zeta = my_degrees(math.atan2(hole.actual_x_dist + (0.25*screen_width), hole.H)) 
+            viewed_dist_2 = (new_zeta*(math.pi*hole.H))/360
+            cordinate_2_base = ((hole.H-viewed_dist_2)*math.cos(inverse_my_degrees(hole.theta))), ((hole.H-viewed_dist_2)*(math.sin(inverse_my_degrees(hole.theta))))
+            slots_base_mid_cord[hole_num].append(cordinate_2_base)#The new cordinate for the base is inserted
+            hole_slots_cords[hole_num].append([])
+            hole.actual_x_dist += hole_speed            
+            if hole.quadrant == 1:
+                #print("From init_hole_distances() this is quadrant 1")
+                #print("Hole disspear is ", hole_dissapear, " y cordinate of width is ", -cordinate_2_width[1])
+                if (-cordinate_2_width[1]) <= hole_dissapear:
+                    move_hole_more = False                
+                    #print("Finished with moving hole slot ", hole_num, " from quadrant ", hole.quadrant)
+            elif hole.quadrant == 2:
+                if (cordinate_2_width[0]) <= hole_dissapear:
+                    move_hole_more = False
+                    #print("Finished with moving hole slot ", hole_num, " from quadrant ", hole.quadrant)
+            elif hole.quadrant == 3:
+                if (cordinate_2_width[1]) <= hole_dissapear:
+                    move_hole_more = False
+                    #print("Finished with moving hole slot ", hole_num, " from quadrant ", hole.quadrant)
+            else: #quadrant 4
+                if (-cordinate_2_width[0]) <= hole_dissapear:
+                    move_hole_more = False 
+                    #print("Finished with moving hole slot ", hole_num, " from quadrant ", hole.quadrant)
+        
+        for index in range(len(slots_base_mid_cord[hole_num])):
+            if hole.quadrant == 1 or hole.quadrant == 3:
+                trap_percieved_base = (0.25 * screen_width) * (abs(slots_base_mid_cord[hole_num][index][1]) / (0.5*screen_width)) #control size of trapezoid base
+                trap_percieved_width = (0.25 * screen_width) * (abs(slots_width_mid_cord[hole_num][index][1]) / (0.5*screen_width))  #control size of trapezoid width
+            else: #If quadrant is 2 or 4            
+                trap_percieved_base = (0.25 * screen_width) * (abs(slots_base_mid_cord[hole_num][index][0]) / (0.5*screen_width)) #control size of trapezoid base 
+                trap_percieved_width = (0.25 * screen_width) * (abs(slots_width_mid_cord[hole_num][index][0]) / (0.5*screen_width)) #control size of trapezoid width
+            if hole.quadrant == 1:        
+                point_1 = ((slots_base_mid_cord[hole_num][index][0]  + 0.5*trap_percieved_base) + (0.5*screen_width),  (-slots_base_mid_cord[hole_num][index][1] + (0.5*screen_width)))
+                point_2 = ((slots_base_mid_cord[hole_num][index][0]  - 0.5*trap_percieved_base) + (0.5*screen_width),  (-slots_base_mid_cord[hole_num][index][1] + (0.5*screen_width)))    
+                point_3 = ((slots_width_mid_cord[hole_num][index][0] - 0.5*trap_percieved_width) + (0.5*screen_width), (-slots_width_mid_cord[hole_num][index][1] + (0.5*screen_width)))
+                point_4 = ((slots_width_mid_cord[hole_num][index][0] + 0.5*trap_percieved_width) + (0.5*screen_width), (-slots_width_mid_cord[hole_num][index][1] + (0.5*screen_width)))               
+            elif hole.quadrant == 2:                    
+                point_1 = ((slots_base_mid_cord[hole_num][index][0] + (0.5*screen_width)) ,  (-slots_base_mid_cord[hole_num][index][1]  - 0.5*trap_percieved_base) + (0.5*screen_width)) 
+                point_2 = ((slots_base_mid_cord[hole_num][index][0] + (0.5*screen_width)) ,  (-slots_base_mid_cord[hole_num][index][1]  + 0.5*trap_percieved_base) + (0.5*screen_width)) 
+                point_3 = ((slots_width_mid_cord[hole_num][index][0] + (0.5*screen_width)) ,  (-slots_width_mid_cord[hole_num][index][1] + 0.5*trap_percieved_width) + (0.5*screen_width))
+                point_4 = ((slots_width_mid_cord[hole_num][index][0] + (0.5*screen_width)) ,  (-slots_width_mid_cord[hole_num][index][1] - 0.5*trap_percieved_width) + (0.5*screen_width))                                     
+            elif hole.quadrant == 3:
+                point_1 = ((slots_base_mid_cord[hole_num][index][0]  - 0.5*trap_percieved_base) + (0.5*screen_width),   (-slots_base_mid_cord[hole_num][index][1] + (0.5*screen_width)))
+                point_2 = ((slots_base_mid_cord[hole_num][index][0]  + 0.5*trap_percieved_base) + (0.5*screen_width),   (-slots_base_mid_cord[hole_num][index][1] + (0.5*screen_width)))                    
+                point_3 = ((slots_width_mid_cord[hole_num][index][0] + 0.5*trap_percieved_width) + (0.5*screen_width),  (-slots_width_mid_cord[hole_num][index][1] + (0.5*screen_width)))    
+                point_4 = ((slots_width_mid_cord[hole_num][index][0] - 0.5*trap_percieved_width) + (0.5*screen_width),  (-slots_width_mid_cord[hole_num][index][1] + (0.5*screen_width)))                                       
+            else: #hole quadrant is quadrant 4     
+                point_1 = ((slots_base_mid_cord[hole_num][index][0] + (0.5*screen_width)),  (-slots_base_mid_cord[hole_num][index][1] + 0.5*trap_percieved_base) + (0.5*screen_width))
+                point_2 = ((slots_base_mid_cord[hole_num][index][0] + (0.5*screen_width)),  (-slots_base_mid_cord[hole_num][index][1] - 0.5*trap_percieved_base) + (0.5*screen_width))
+                point_3 = ((slots_width_mid_cord[hole_num][index][0] + (0.5*screen_width)),  (-slots_width_mid_cord[hole_num][index][1]  - 0.5*trap_percieved_width) + (0.5*screen_width))    
+                point_4 = ((slots_width_mid_cord[hole_num][index][0] + (0.5*screen_width)),  (-slots_width_mid_cord[hole_num][index][1]  + 0.5*trap_percieved_width) + (0.5*screen_width))  
+            hole_slots_cords[hole_num][index].append(point_1)
+            hole_slots_cords[hole_num][index].append(point_2)
+            hole_slots_cords[hole_num][index].append(point_3)
+            hole_slots_cords[hole_num][index].append(point_4)
+    #print("The final hole_slots_cords is ", hole_slots_cords)        
+    end_time = time.time()
+    print("All possible hole cordinates have been calculated and it took ", (end_time - start_time), " seconds.")
 
 def my_degrees(rad):
     rad = math.degrees(rad)
@@ -505,10 +562,6 @@ def turn_platform():
 
     rotated_platform = pygame.transform.rotate(platform, platform_theta) #Save new rotated platform
     center = rotated_platform.get_rect(center=(0.5 * screen_width, 0.5 * screen_height)) 
-
-    
-
- 
     return rotated_platform, center
 
 # Define a Player object by extending pygame.sprite.Sprite
@@ -568,7 +621,7 @@ class Player(pygame.sprite.Sprite):
                 rotating_platform = True
                 platform_clockwise = True
                 self.jumping = False
-                self.delta_y = 0
+                self.delta_y = CONSTANT_JUMP_SPEED
                 self.rotat_delt_x = ((player_bounds[0] - self.x_pos) + (CONSTANT_INITIAL_Y - self.y_pos)) / rotate_rate #move duck left when rotating platform clockwise
                 self.rotat_delt_y = (CONSTANT_INITIAL_Y - self.y_pos) / rotate_rate
 
@@ -580,47 +633,45 @@ class Player(pygame.sprite.Sprite):
         global CONSTANT_PLYR_WIDTH
         #print("check_fall() function is in use")        
         if self.jumping == False and not rotating_platform:
-            duck_hole_slot = (self.x_pos + (0.5 * CONSTANT_PLYR_WIDTH) - player_bounds[0]) // ((player_bounds[1] - player_bounds[0]) / 4) #If 1 2 3 4 then 0 will be slot 1 for hole slots
+            duck_hole_slot = (self.x_pos + (0.5 * CONSTANT_PLYR_WIDTH) - player_bounds[0]) // (((0.5 * CONSTANT_PLYR_WIDTH) + player_bounds[1] - player_bounds[0]) / 4) #If 1 2 3 4 then 0 will be slot 1 for hole slots
             for hole in existing_holes: #loop through all existing holes to see which ones could be a threat
                 if hole.possible_danger:
                     if platform_theta < 0:
                         if hole.quadrant == (platform_theta % 360)/90: #Check if hole is in the same platform as the duck
                             if (hole.hole_number % 4) == duck_hole_slot: #Check if the Duck is in the same hole slot as the dangerous hole
                                 self.game_over = True
+                                hole.losing_hole = True
                                 print("You lost to a hole in quadrant ", hole.quadrant, " and in hole slot ", hole.hole_number)
 
                     else: #if total platform rotation was positive and counter clockwise
                         if hole.quadrant == 1 and platform_theta % 360 == 0:
                             if (hole.hole_number % 4) == duck_hole_slot: #Check if the Duck is in the same hole slot as the dangerous hole
                                 self.game_over = True
+                                hole.losing_hole = True
                                 print("You lost to a hole in quadrant ", hole.quadrant, " and in hole slot ", hole.hole_number)
 
                         elif hole.quadrant == 4 and platform_theta % 360 == 90:
                             if (hole.hole_number % 4) == duck_hole_slot: #Check if the Duck is in the same hole slot as the dangerous hole
                                 self.game_over = True
+                                hole.losing_hole = True
                                 print("You lost to a hole in quadrant ", hole.quadrant, " and in hole slot ", hole.hole_number)
 
                         elif hole.quadrant == 3 and platform_theta % 360 == 180:
                             if (hole.hole_number % 4) == duck_hole_slot: #Check if the Duck is in the same hole slot as the dangerous hole
                                 self.game_over = True
+                                hole.losing_hole = True
                                 print("You lost to a hole in quadrant ", hole.quadrant, " and in hole slot ", hole.hole_number)
 
                         elif hole.quadrant == 2 and platform_theta % 360 == 270:
                             if (hole.hole_number % 4) == duck_hole_slot: #Check if the Duck is in the same hole slot as the dangerous hole
                                 self.game_over = True
+                                hole.losing_hole = True
                                 print("You lost to a hole in quadrant ", hole.quadrant, " and in hole slot ", hole.hole_number)
 
             if not self.game_over:
                 for hole in existing_holes:
                     hole.possible_danger = False
-            for i in range(len(existing_holes)):
-                print("Index ", i, " in the list existing_holes has possible_danger set to ", existing_holes[i].possible_danger )
-            print()
-
-
-
-
-
+            
     def run(self, duck_step):
         if duck_step % 8 == 0:
             screen.blit(baby_duck_scaled[7], (self.x_pos, self.y_pos))
@@ -648,7 +699,9 @@ class Player(pygame.sprite.Sprite):
             self.delta_y = CONSTANT_JUMP_SPEED
         screen.blit(baby_duck_scaled[0], (self.x_pos, self.y_pos)) #Put jumping duck image on top of background
 
-def Loss(baby_duck):
+def Loss(baby_duck,  all_hole, ledge_x, clock):
+    global FPS
+    loss_length = 10 #How long the loss scene will last in seconds
     print("   |   |  | |  ")
     print("       |       ")
     print("-------+-------")
@@ -656,13 +709,61 @@ def Loss(baby_duck):
     print(" | |   |  | __ ")
     print("  ")
     print("  ")
-    time.sleep(8)#Sleep 8 seconds
+    finished = False
+    frame = 1
+    while not finished:
+        clock.tick(FPS) # Stop updating until time of 1/FPS passes
+        frame += 1
+        if frame / FPS == loss_length:
+            finished = True
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: # Did the user click the window close button?
+                    finished = True
+        draw_losing_frames(baby_duck, all_hole, ledge_x)
+        
+def draw_losing_frames(baby_duck, all_hole, ledge_x):
+    global existing_holes 
+    global platform_dimensions        
+    pygame.draw.rect(platform, plat_color(), (0.5 * screen_width - 0.5 * platform_dimensions[0], 0.5 * screen_height - 0.5 * platform_dimensions[1], 1.15*platform_dimensions[0], 1.15*platform_dimensions[1])) # Create a colored platform
+    hole = pygame.Surface((platform_dimensions[0], platform_dimensions[1]), pygame.SRCALPHA)
+    square_cut = [adjust_plat_loc(screen_width*0.45, screen_height*0.45), 
+                 adjust_plat_loc(screen_width*0.45, screen_height*0.55), 
+                 adjust_plat_loc(screen_width*0.55, screen_height*0.55), 
+                 adjust_plat_loc(screen_width*0.55, screen_height*0.45)] #Space at the end of the tunnel
+    pygame.draw.polygon(hole, (0, 0, 0, 255), square_cut)  
+
+def no_or_partial_ground(BabyDuck1): #function returns first if player base was partly on ground or not and then returns an x value for where the ledge was 
+    global existing_holes
+    global player_bounds
+    global CONSTANT_PLYR_WIDTH
+    
+    count = 0
+    for hole in existing_holes:
+        if hole.losing_hole:
+            count += 1 
+        if count == 2:
+            return True
+        if hole.hole_number % 4 == 0: #left most hole slot
+            if (BabyDuck1.x_pos >= player_bounds[0]) and ((BabyDuck1.x_pos + CONSTANT_PLYR_WIDTH ) < (((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) + player_bounds[0])):
+                return True, 0
+            
+        elif hole.hole_number % 4 == 1: #second to left hole slot
+            if ((BabyDuck1.x_pos) > (((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) + player_bounds[0])) and ((BabyDuck1.x_pos + CONSTANT_PLYR_WIDTH ) < ((((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) * 2) + player_bounds[0])):
+                return True, 0
+        elif hole.hole_number % 4 == 2: #second to right hole slot
+            if  ((BabyDuck1.x_pos) > ((((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) * 2) + player_bounds[0])) and  ((BabyDuck1.x_pos + CONSTANT_PLYR_WIDTH ) < ((((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) * 3) + player_bounds[0])):
+                return True, 0
+        else: #right most hole slot
+            if ((BabyDuck1.x_pos) > ((((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4) * 3) + player_bounds[0])) and (BabyDuck1.x_pos <= player_bounds[1]):
+                return True, 0      
+    ledge_x = (round(((0.5*CONSTANT_PLYR_WIDTH) + BabyDuck1.x_pos) / ((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4)) * ((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4)) + player_bounds[0] #The ledge x cordinate
+    return False, ledge_x
 
 def main():   
     global rotating_platform    
-    global platform_clockwise
-   
+    global platform_clockwise   
     global game_won
+    init_hole_distances()
     close_window = False # Did the user try to close the gaming window
     BabyDuck1 = Player()
     slow_duck = 5 # factor to slow duck waddle down by (5 looks good)
@@ -700,16 +801,14 @@ def main():
             Holes_Exist(frame)
             draw_screen(duck_step, BabyDuck1,frame )
         elif BabyDuck1.game_over:#Game over lose transition
-            Loss(BabyDuck1) 
+            all_hole, ledge_x = no_or_partial_ground(BabyDuck1)
+            Loss(BabyDuck1, all_hole, ledge_x, clock) 
             close_window = True
 
         elif game_won and not BabyDuck1.game_over:
             pass
 
 
-        
-
-    
     pygame.quit() # User closed window Time to quit.
 
 if __name__ == "__main__":
