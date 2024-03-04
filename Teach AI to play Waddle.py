@@ -1,5 +1,6 @@
 #Refrences: https://realpython.com/pygame-a-primer/ , https://www.youtube.com/watch?v=jO6qQDNa2UY&list=WL&index=3&t=1130s , https://www.pygame.org/docs/ref/transform.html, https://youtu.be/WnIycS9Gf_c?si=nBcmH4enYm5tgfPT, 
 #Current baby duck source: https://www.google.com/search?sca_esv=82020f27733c768a&rlz=1C1UEAD_enUS966US966&sxsrf=ACQVn0_y9kkIOCc78kcSxso8f3jzEXdsgQ:1707580113609&q=baby+duck+run&tbm=vid&source=lnms&sa=X&ved=2ahUKEwj3kePQj6GEAxVMJDQIHcAoBPgQ0pQJegQICxAB&biw=1536&bih=738&dpr=1.25#fpstate=ive&vld=cid:433d5a04,vid:CWgbmgIzoT8,st:0
+#Winner pic source: http://en.spongepedia.org/index.php?title=Smitty_Werben_Man_Jensen
 #Note: used // for floor division in check_fall(self) and this works because I am using Python 3.10.11, it may change depending on your version
 import pygame 
 import os
@@ -17,6 +18,8 @@ platform = pygame.Surface(platform_dimensions, pygame.SRCALPHA)
 player_bounds = ((0.5*screen_width) - ((CONSTANT_INITIAL_Y - (0.5*screen_height))+CONSTANT_PLYR_HEIGHT), (0.5*screen_width) + ((CONSTANT_INITIAL_Y - (0.5*screen_height)) + CONSTANT_PLYR_HEIGHT - CONSTANT_PLYR_WIDTH)) #For player bounds to rotate platform Assuming that screen height will always be equal to screen width
 baby_duck_images = [pygame.image.load(os.path.join('game images', f'duck {i}.png')) for i in range(1, 9)] #Upload all baby duck images 
 space_image = pygame.transform.scale(pygame.image.load(os.path.join('game images', 'space background.png')),(screen_width, screen_height))
+winner_image = pygame.image.load(os.path.join('game images', 'Winner.jfif'))
+winner_image = pygame.transform.scale(winner_image,(CONSTANT_PLYR_WIDTH, CONSTANT_PLYR_HEIGHT))
 baby_duck_scaled = [] #empty list to be filled in for loop
 for x in baby_duck_images: 
     baby_duck_scaled.append(pygame.transform.scale(x,(CONSTANT_PLYR_WIDTH, CONSTANT_PLYR_HEIGHT))) # Loop through all pictures of baby duck and scale them the same
@@ -39,8 +42,11 @@ finish_rotate = 0
 platform_theta = 0
 rotate_rate = 15 #When the platform rotates it's at this rate
 rotate_deg = 90 / rotate_rate
-
-
+slow_duck = 5 # factor to slow duck waddle down by (5 looks good)
+color_jump_time = 1 #number of seconds before a player's jump changes the color of the platform
+color_jump_time = color_jump_time * FPS
+winner_frame_time = 4 #number of seconds for winner frames to play(showing they are number 1)
+winner_frame_time = winner_frame_time * FPS
 hole_slots_cords = [[] for _ in range(16)]
 
 captions = ["Now let's Waddle!", "Keep up the good work!", "Lets go!", "You're doing just okay actually, not that impressive.", "Oh look at the big fella! lets see how you handle the hard levels.", "Maybe this game isn't actually that hard. Have you thoght of that? Don't get so full of yourself."]
@@ -70,8 +76,11 @@ Levels.append(level_3)
 level_4= [[False]*16 for _ in range(30)]  #False means there is no hole
 level_4[0][1] = True   #True means there is a hole
 Levels.append(level_4)
+level_5= [[False]*16 for _ in range(30)]  #False means there is no hole
+level_5[0][7] = True   #True means there is a hole
+Levels.append(level_5)
 
-current_level = 1 #If =1, playing through level_1  
+current_level = 1 #If=1, playing through level_1  
 
 #*************************************************************************************************************************************************************8
 def Holes_Exist(frame):
@@ -83,7 +92,7 @@ def Holes_Exist(frame):
     global level_wait
     global game_won
     global platform_color
-    if frame*hole_speed % (screen_width*0.25) == 0 and not level_transition: #if the lasthole ha moved up by one hole height then make another hole
+    if frame*hole_speed % (screen_width*0.25) == 0 and not level_transition and not game_won: #if the lasthole has moved up by one hole height then make another hole
         for hole_number in range(16):
             if Levels[current_level - 1][hole_layer][hole_number]: #Levels = [ [ [False, True, ... ], [...], [...], ...]]]
                 existing_holes.append(Hole(hole_number))  
@@ -99,8 +108,9 @@ def Holes_Exist(frame):
             level_transition = False
             platform_color += 1
             current_level += 1
-            if current_level == len(Levels):
-                game_won = True
+        if current_level == len(Levels):
+            print("Game has been won")
+            game_won = True
 
 def remove_holes():
     global existing_holes
@@ -305,15 +315,21 @@ def check_danger(index, player): #this function checks to see if any of the hole
         #print("Used check_danger()")
 
 def draw_screen(duck_step, BabyDuck1, frame):
+    global captions
+    global current_level
+    global game_won  
     BabyDuck1.check_fall()
-    if not BabyDuck1.game_over:
-        pygame.display.set_caption("Now let's WADDLE!")
-    else:
-        pygame.display.set_caption("Game Over. You Lose")
+    if not BabyDuck1.game_over and not game_won:
+        pygame.display.set_caption(captions[(current_level-1) % len(captions)])
+    elif game_won:
+        pygame.display.set_caption("You won, nice job Smitty Werbenmanjensen!")    
     BabyDuck1.check_walls()
     screen.blit(space_image, (0, 0)) # Fill the background with space image resized
     draw_holes(frame, BabyDuck1)
-    BabyDuck1.draw_duck(duck_step) #Draw duck ontop of space image
+    if game_won:
+        BabyDuck1.draw_winner()
+    else: #game still going, no winner yet
+        BabyDuck1.draw_duck(duck_step) #Draw duck ontop of space image
     pygame.display.update()
 
 def draw_holes(frame, BabyDuck1): #Draws holes on platform #trap_vertices will be a list of lists of coordinates like [[(coordinates),(...),(...),(...)],[(...),(...),(...),(...)],[(...),(...),(...),(...)]]      
@@ -329,7 +345,7 @@ def draw_holes(frame, BabyDuck1): #Draws holes on platform #trap_vertices will b
     pygame.draw.polygon(hole, (0, 0, 0, 255), square_cut)  
      
     for index in range(len(existing_holes)): #For every trapazoid in the list of existing_holes cut the hole into the platform
-        trap = move_holes(index, frame) #Update the hole location
+        trap = move_holes(index) #Update the hole location
         check_danger(index, BabyDuck1) #Check if hole could possibly make player fail
         #print("From draw_holes() the existing_holes[index].actual_x_dist after updating the hole is ", existing_holes[index].actual_x_dist)
         
@@ -376,7 +392,7 @@ def plat_color():
     index = platform_color % len(platt_color)
     return platt_color[index]
 
-def move_holes(index, frame):
+def move_holes(index):
     global FPS
     global hole_slots_cords
     point_1, point_2, point_3, point_4 = (), (), (), ()
@@ -483,7 +499,7 @@ def init_hole_distances():
     #print("The final hole_slots_cords is ", hole_slots_cords)        
     end_time = time.time()
     print("All possible hole cordinates have been calculated and it took ", (end_time - start_time), " seconds.")
-
+            
 def my_degrees(rad):
     rad = math.degrees(rad)
     if rad < 0:
@@ -537,6 +553,7 @@ class Player(pygame.sprite.Sprite):
     def draw_duck(self, duck_step):
         global rotate_rate
         global platform_clockwise
+        global baby_duck_scaled
         if  rotating_platform:
             self.left = False
             self.right = False            
@@ -556,6 +573,34 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.jump(duck_step)
     
+    def draw_winner(self):
+        global winner_image
+        global rotate_rate
+        global platform_clockwise
+        if  rotating_platform:
+            self.left = False
+            self.right = False            
+            self.x_pos += self.rotat_delt_x
+            self.y_pos += self.rotat_delt_y
+            screen.blit(winner_image, (self.x_pos, self.y_pos)) 
+        else: #platform is not rotating
+            if self.left:
+                self.x_pos -= self.duck_slide
+                self.left = False
+            if self.right:
+                self.x_pos += self.duck_slide
+                self.right = False  
+            if not self.jumping:
+                screen.blit(winner_image, (self.x_pos, self.y_pos))
+            else:#If winner player is jumping
+                self.y_pos -= int(self.delta_y)
+                self.delta_y = self.delta_y - (2/FPS*CONSTANT_JUMP_SPEED)
+                if self.y_pos > CONSTANT_INITIAL_Y: #If player lands at initial height stop falling
+                    self.y_pos = CONSTANT_INITIAL_Y
+                    self.jumping = False
+                    self.delta_y = CONSTANT_JUMP_SPEED
+                screen.blit(winner_image, (self.x_pos, self.y_pos))
+        
     def check_walls(self):
         global player_bounds
         global rotating_platform
@@ -625,7 +670,7 @@ class Player(pygame.sprite.Sprite):
             if not self.game_over:
                 for hole in existing_holes:
                     hole.possible_danger = False
-            
+
     def run(self, duck_step):
         if duck_step % 8 == 0:
             screen.blit(baby_duck_scaled[7], (self.x_pos, self.y_pos))
@@ -685,6 +730,18 @@ def draw_losing_frames(baby_duck, all_hole, ledge_x):
                  adjust_plat_loc(screen_width*0.55, screen_height*0.55), 
                  adjust_plat_loc(screen_width*0.55, screen_height*0.45)] #Space at the end of the tunnel
     pygame.draw.polygon(hole, (0, 0, 0, 255), square_cut)  
+    for hole in existing_holes:
+        trap = []
+        trap[0] = hole.point_1 
+        trap[1] = hole.point_2 
+        trap[2] = hole.point_3 
+        trap[3] = hole.point_4 
+        updated_trap = []
+        updated_trap = [adjust_plat_loc(trap[i][0], trap[i][1]) for i in range(4)]
+        pygame.draw.polygon(hole, (0, 0, 0, 255), updated_trap) 
+    rotated_platform = pygame.transform.rotate(platform, platform_theta) #Save new rotated platform
+    center = rotated_platform.get_rect(center=(0.5 * screen_width, 0.5 * screen_height))
+    screen.blit(rotated_platform, center) 
 
 def no_or_partial_ground(BabyDuck1): #function returns first if player base was partly on ground or not and then returns an x value for where the ledge was 
     global existing_holes
@@ -713,34 +770,97 @@ def no_or_partial_ground(BabyDuck1): #function returns first if player base was 
     ledge_x = (round(((0.5*CONSTANT_PLYR_WIDTH) + BabyDuck1.x_pos) / ((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4)) * ((player_bounds[1] + CONSTANT_PLYR_WIDTH - player_bounds[0]) / 4)) + player_bounds[0] #The ledge x cordinate
     return False, ledge_x
 
+def Champ(duck_step, BabyDuck1, frame, change_color, color_timer):
+    global existing_holes
+    global FPS
+    global slow_duck
+    global color_jump_time
+    global winner_frame_time
+    winner_frames = 0
+    global platform_color
+    close_window = False
+    clock = pygame.time.Clock()       
+    clock.tick(FPS) # Stop updating until time of 1/FPS passes        
+    while not close_window: # Keep gaming window open for our gamer 
+        if winner_frames < winner_frame_time:
+            if existing_holes == []:
+                winner_frames += 1
+            if frame % slow_duck == 0: #reduce frequency of duck steps
+                duck_step += 1
+            keys_pressed = pygame.key.get_pressed() #put all pressed keys in this list of true and false values
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT: # Did the user click the window close button?
+                    close_window = True
+            if keys_pressed[pygame.K_s]:
+                time.sleep(4)#Sleep for 4 seconds when the space bar is pushed        
+            if keys_pressed[pygame.K_SPACE]:
+                BabyDuck1.jumping = True
+                if change_color:
+                    platform_color += 1
+                    change_color = False
+            if not change_color:
+                color_timer += 1
+                if color_timer == color_jump_time:
+                    change_color = True
+                    color_timer = 0
+            if keys_pressed[pygame.K_LEFT]:
+                BabyDuck1.left = True
+            if keys_pressed[pygame.K_RIGHT]:
+                BabyDuck1.right = True
+            if BabyDuck1.left and BabyDuck1.right:
+                BabyDuck1.left = False
+                BabyDuck1.right = False        
+            if not rotating_platform: #Check if platform is rotating and stop hole motion besides rotation
+                frame += 1 
+            if not BabyDuck1.game_over:
+                Holes_Exist(frame)
+                draw_screen(duck_step, BabyDuck1,frame )
+            #print("there are still holes left")
+        else:#All holes have been deleted
+            #print("there are no more holes")
+            time.sleep(4)#Sleep for 4 seconds when the space bar is pushed
+            close_window = True
+
+
 def main():   
     global rotating_platform    
     global platform_clockwise   
     global game_won
+    global slow_duck
+    global platform_color
+    global color_jump_time
+
     init_hole_distances()
     close_window = False # Did the user try to close the gaming window
     BabyDuck1 = Player()
-    slow_duck = 5 # factor to slow duck waddle down by (5 looks good)
     duck_step = 0
     frame = 0
+    change_color = True
+    color_timer = 0
     clock = pygame.time.Clock()   
     
     while not close_window: # Keep gaming window open for our gamer
-        clock.tick(FPS) # Stop updating until time of 1/FPS passes
-        
-        
+        clock.tick(FPS) # Stop updating until time of 1/FPS passes        
         if frame % slow_duck == 0: #reduce frequency of duck steps
             duck_step += 1
-
         keys_pressed = pygame.key.get_pressed() #put all pressed keys in this list of true and false values
         for event in pygame.event.get():
             if event.type == pygame.QUIT: # Did the user click the window close button?
                 close_window = True
         if keys_pressed[pygame.K_s]:
-            time.sleep(4)#Sleep for 4 seconds when the space bar is pushed
-        
+            time.sleep(4)#Sleep for 4 seconds when the space bar is pushed        
         if keys_pressed[pygame.K_SPACE]:
             BabyDuck1.jumping = True
+            if change_color:
+                platform_color += 1
+                change_color = False
+        if not change_color:
+            color_timer += 1
+            if color_timer == color_jump_time:
+                change_color = True
+                color_timer = 0
+
+            
         if keys_pressed[pygame.K_LEFT]:
             BabyDuck1.left = True
         if keys_pressed[pygame.K_RIGHT]:
@@ -753,15 +873,15 @@ def main():
             frame += 1 
         if not BabyDuck1.game_over:
             Holes_Exist(frame)
-            draw_screen(duck_step, BabyDuck1,frame )
+            draw_screen(duck_step, BabyDuck1,frame)
         elif BabyDuck1.game_over:#Game over lose transition
             all_hole, ledge_x = no_or_partial_ground(BabyDuck1)
             Loss(BabyDuck1, all_hole, ledge_x, clock) 
             close_window = True
 
-        elif game_won and not BabyDuck1.game_over:
-            pass
-
+        if game_won:            
+            Champ(duck_step, BabyDuck1,frame, change_color, color_timer)
+            close_window = True
 
     pygame.quit() # User closed window Time to quit.
 
